@@ -2,7 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\CustomerRegistrationController;
+use App\Http\Controllers\Customer\Auth\CustomerRegistrationController;
 
 
 Route::post('/auth/register', [CustomerRegistrationController::class, 'register'])
