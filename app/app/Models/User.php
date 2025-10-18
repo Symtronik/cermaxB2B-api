@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 use Laravel\Sanctum\HasApiTokens;
+use App\Models\CompanyProfile;
 
 class User extends Authenticatable
 {
@@ -46,5 +47,16 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+   public function company()
+    {
+        return $this->belongsTo(CompanyProfile::class, 'company_id');
+    }
+
+    // (opcjonalnie) zachowaj dawną nazwę dla kompatybilności:
+    public function companyProfile()
+    {
+        return $this->belongsTo(CompanyProfile::class, 'company_id');
     }
 }
