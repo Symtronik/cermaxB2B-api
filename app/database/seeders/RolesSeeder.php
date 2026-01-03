@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
@@ -15,9 +14,13 @@ class RolesSeeder extends Seeder
      */
     public function run(): void
     {
-        app()[PermissionRegistrar::class]->forgetCachedPermissions();
+        // Wyczyść cache ról i uprawnień
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-         $perms = [
+        // Ustal guard (spójny z config/permission.php i config/auth.php)
+        $guard = config('permission.defaults.guard') ?? config('auth.defaults.guard', 'web');
+
+        $perms = [
             // zamówienia
             'orders.view',
             'orders.create',
@@ -43,14 +46,31 @@ class RolesSeeder extends Seeder
             'settings.manage',
         ];
 
+        // Tworzenie uprawnień z właściwym guardem
         foreach ($perms as $p) {
-            Permission::firstOrCreate(['name' => $p]);
+            Permission::firstOrCreate(
+                [
+                    'name'       => $p,
+                    'guard_name' => $guard,
+                ]
+            );
         }
 
-        // Role
-        $customer = Role::firstOrCreate(['name' => 'customer']);
-        $admin    = Role::firstOrCreate(['name' => 'admin']);
-        $super    = Role::firstOrCreate(['name' => 'super-admin']);
+        // Role z tym samym guardem
+        $customer = Role::firstOrCreate([
+            'name'       => 'customer',
+            'guard_name' => $guard,
+        ]);
+
+        $admin = Role::firstOrCreate([
+            'name'       => 'admin',
+            'guard_name' => $guard,
+        ]);
+
+        $super = Role::firstOrCreate([
+            'name'       => 'super-admin',
+            'guard_name' => $guard,
+        ]);
 
         // Klient B2B – widzi produkty, może składać zamówienia
         $customer->syncPermissions([
@@ -69,8 +89,9 @@ class RolesSeeder extends Seeder
             'settings.view',
         ]);
 
-        // Super-admin – wszystko
-        $super->syncPermissions(Permission::all());
-
+        // Super-admin – wszystkie permissiony w tym guardzie
+        $super->syncPermissions(
+            Permission::where('guard_name', $guard)->get()
+        );
     }
 }

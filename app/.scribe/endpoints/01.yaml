@@ -1,266 +1,52 @@
-name: Admin
+name: Endpoints
 description: ''
 endpoints:
   -
     httpMethods:
       - GET
-    uri: api/admin/users
+    uri: 'api/translations/{lang}'
     metadata:
-      groupName: Admin
+      groupName: Endpoints
       groupDescription: ''
       subgroup: ''
       subgroupDescription: ''
-      title: |-
-        List Admin and Super Admin Users
-
-        Retrieves a paginated list of users who have either the `admin` or `super-admin` role.
-        Only accessible by users with the `super-admin` role.
+      title: ''
       description: ''
-      authenticated: true
-      deprecated: false
-      custom: []
-    headers:
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters: []
-    cleanUrlParameters: []
-    queryParameters:
-      q:
-        name: q
-        description: 'Filter results by name or email.'
-        required: false
-        example: sylwia
-        type: string
-        enumValues: []
-        exampleWasSpecified: true
-        nullable: false
-        custom: []
-      per_page:
-        name: per_page
-        description: 'The number of results per page (1–100). Default: 25.'
-        required: false
-        example: 10
-        type: integer
-        enumValues: []
-        exampleWasSpecified: true
-        nullable: false
-        custom: []
-    cleanQueryParameters:
-      q: sylwia
-      per_page: 10
-    bodyParameters: []
-    cleanBodyParameters: []
-    fileParameters: []
-    responses:
-      -
-        status: 200
-        content: |-
-          {
-            "data": [
-              {
-                "id": 1,
-                "name": "Sylwia",
-                "email": "sylwia@example.com",
-                "roles": ["admin"]
-              },
-              {
-                "id": 2,
-                "name": "John Doe",
-                "email": "john@example.com",
-                "roles": ["super-admin","admin"]
-              }
-            ],
-            "current_page": 1,
-            "per_page": 25,
-            "total": 2
-          }
-        headers: []
-        description: ''
-        custom: []
-    responseFields: []
-    auth: []
-    controller: null
-    method: null
-    route: null
-    custom: []
-  -
-    httpMethods:
-      - POST
-    uri: api/admin/users/register
-    metadata:
-      groupName: Admin
-      groupDescription: ''
-      subgroup: ''
-      subgroupDescription: ''
-      title: |-
-        Admin Registration
-
-        Creates a new admin user and assigns the specified roles.
-        Only accessible to users with the `super-admin` role.
-      description: ''
-      authenticated: true
-      deprecated: false
-      custom: []
-    headers:
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters: []
-    cleanUrlParameters: []
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters:
-      name:
-        name: name
-        description: "The admin user's full name."
-        required: true
-        example: 'Anna Nowak'
-        type: string
-        enumValues: []
-        exampleWasSpecified: true
-        nullable: false
-        custom: []
-      email:
-        name: email
-        description: 'A unique email address for the admin.'
-        required: true
-        example: anna.admin@example.com
-        type: string
-        enumValues: []
-        exampleWasSpecified: true
-        nullable: false
-        custom: []
-      password:
-        name: password
-        description: 'The account password (minimum 8 characters).'
-        required: true
-        example: test1234
-        type: string
-        enumValues: []
-        exampleWasSpecified: true
-        nullable: false
-        custom: []
-      password_confirmation:
-        name: password_confirmation
-        description: 'Password confirmation.'
-        required: true
-        example: test1234
-        type: string
-        enumValues: []
-        exampleWasSpecified: true
-        nullable: false
-        custom: []
-      roles:
-        name: roles
-        description: 'optional A list of roles to assign to the user.'
-        required: false
-        example:
-          - admin
-        type: 'string[]'
-        enumValues: []
-        exampleWasSpecified: true
-        nullable: false
-        custom: []
-    cleanBodyParameters:
-      name: 'Anna Nowak'
-      email: anna.admin@example.com
-      password: test1234
-      password_confirmation: test1234
-      roles:
-        - admin
-    fileParameters: []
-    responses:
-      -
-        status: 201
-        content: |-
-          {
-            "id": 15,
-            "email": "anna.admin@example.com",
-            "roles": ["admin"]
-          }
-        headers: []
-        description: ''
-        custom: []
-    responseFields: []
-    auth: []
-    controller: null
-    method: null
-    route: null
-    custom: []
-  -
-    httpMethods:
-      - POST
-    uri: 'api/admin/users/update/roles/{userId}'
-    metadata:
-      groupName: Admin
-      groupDescription: ''
-      subgroup: ''
-      subgroupDescription: ''
-      title: |-
-        Update User Roles
-
-        Updates (synchronizes) the roles assigned to a specific user.
-        This operation replaces all existing roles with the provided list.
-        Only accessible to users with the `super-admin` role.
-        The system prevents removing the last remaining `super-admin`.
-      description: ''
-      authenticated: true
+      authenticated: false
       deprecated: false
       custom: []
     headers:
       Content-Type: application/json
       Accept: application/json
     urlParameters:
-      userId:
-        name: userId
-        description: 'The ID of the user whose roles are being updated.'
+      lang:
+        name: lang
+        description: ''
         required: true
-        example: 7
-        type: integer
+        example: architecto
+        type: string
         enumValues: []
-        exampleWasSpecified: true
+        exampleWasSpecified: false
         nullable: false
         custom: []
     cleanUrlParameters:
-      userId: 7
+      lang: architecto
     queryParameters: []
     cleanQueryParameters: []
-    bodyParameters:
-      roles:
-        name: roles
-        description: 'A list of roles to assign to the user.'
-        required: true
-        example:
-          - admin
-          - manager
-        type: 'string[]'
-        enumValues: []
-        exampleWasSpecified: true
-        nullable: false
-        custom: []
-    cleanBodyParameters:
-      roles:
-        - admin
-        - manager
+    bodyParameters: []
+    cleanBodyParameters: []
     fileParameters: []
     responses:
       -
         status: 200
-        content: |-
-          {
-            "id": 7,
-            "roles": ["admin", "manager"]
-          }
-        headers: []
-        description: ''
-        custom: []
-      -
-        status: 422
-        content: |-
-          {
-            "message": "Cannot remove the super-admin role. This is the last super-admin."
-          }
-        headers: []
-        description: ''
+        content: '[]'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          x-ratelimit-limit: '60'
+          x-ratelimit-remaining: '59'
+          access-control-allow-origin: '*'
+        description: null
         custom: []
     responseFields: []
     auth: []

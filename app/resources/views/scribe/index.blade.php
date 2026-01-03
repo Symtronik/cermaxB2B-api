@@ -71,7 +71,14 @@
                     <a href="#admin">Admin</a>
                 </li>
                                     <ul id="tocify-subheader-admin" class="tocify-subheader">
-                                                    <li class="tocify-item level-2" data-unique="admin-GETapi-admin-users">
+                                                    <li class="tocify-item level-2" data-unique="admin-POSTapi-admin-login">
+                                <a href="#admin-POSTapi-admin-login">Admin Login
+
+Loguje użytkownika do panelu admina (tylko role `admin` lub `super-admin`).
+
+Zwraca token Sanctum oraz podstawowe dane użytkownika i jego role.</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="admin-GETapi-admin-users">
                                 <a href="#admin-GETapi-admin-users">List Admin and Super Admin Users
 
 Retrieves a paginated list of users who have either the `admin` or `super-admin` role.
@@ -99,9 +106,10 @@ The system prevents removing the last remaining `super-admin`.</a>
                 </li>
                                     <ul id="tocify-subheader-customer" class="tocify-subheader">
                                                     <li class="tocify-item level-2" data-unique="customer-POSTapi-user-register">
-                                <a href="#customer-POSTapi-user-register">User Registration
-
-Creates a new customer account and returns an API token.</a>
+                                <a href="#customer-POSTapi-user-register">Register a new customer account.</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="customer-POSTapi-user-login">
+                                <a href="#customer-POSTapi-user-login">Log in an existing customer.</a>
                             </li>
                                                                                 <li class="tocify-item level-2" data-unique="customer-GETapi-user-company">
                                 <a href="#customer-GETapi-user-company">Get company profile</a>
@@ -120,6 +128,16 @@ Creates a new customer account and returns an API token.</a>
                             </li>
                                                                         </ul>
                             </ul>
+                    <ul id="tocify-header-endpoints" class="tocify-header">
+                <li class="tocify-item level-1" data-unique="endpoints">
+                    <a href="#endpoints">Endpoints</a>
+                </li>
+                                    <ul id="tocify-subheader-endpoints" class="tocify-subheader">
+                                                    <li class="tocify-item level-2" data-unique="endpoints-GETapi-translations--lang-">
+                                <a href="#endpoints-GETapi-translations--lang-">GET api/translations/{lang}</a>
+                            </li>
+                                                                        </ul>
+                            </ul>
             </div>
 
     <ul class="toc-footer" id="toc-footer">
@@ -129,7 +147,7 @@ Creates a new customer account and returns an API token.</a>
     </ul>
 
     <ul class="toc-footer" id="last-updated">
-        <li>Last updated: October 18, 2025</li>
+        <li>Last updated: November 26, 2025</li>
     </ul>
 </div>
 
@@ -152,7 +170,201 @@ You can switch the language used with the tabs at the top right (or from the nav
 
     
 
-                                <h2 id="admin-GETapi-admin-users">List Admin and Super Admin Users
+                                <h2 id="admin-POSTapi-admin-login">Admin Login
+
+Loguje użytkownika do panelu admina (tylko role `admin` lub `super-admin`).
+
+Zwraca token Sanctum oraz podstawowe dane użytkownika i jego role.</h2>
+
+<p>
+</p>
+
+
+
+<span id="example-requests-POSTapi-admin-login">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request POST \
+    "http://localhost:8000/api/admin/login" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json" \
+    --data "{
+    \"email\": \"superadmin@example.com\",
+    \"password\": \"password123\",
+    \"device_name\": \"admin-panel\"
+}"
+</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost:8000/api/admin/login"
+);
+
+const headers = {
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "email": "superadmin@example.com",
+    "password": "password123",
+    "device_name": "admin-panel"
+};
+
+fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-POSTapi-admin-login">
+            <blockquote>
+            <p>Example response (200):</p>
+        </blockquote>
+                <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;token&quot;: &quot;1|AlaMaKota...&quot;,
+    &quot;user&quot;: {
+        &quot;id&quot;: 1,
+        &quot;name&quot;: &quot;Main Super Admin&quot;,
+        &quot;email&quot;: &quot;superadmin@example.com&quot;,
+        &quot;roles&quot;: [
+            &quot;super-admin&quot;
+        ]
+    }
+}</code>
+ </pre>
+            <blockquote>
+            <p>Example response (403):</p>
+        </blockquote>
+                <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;message&quot;: &quot;Brak uprawnień do panelu administratora.&quot;
+}</code>
+ </pre>
+            <blockquote>
+            <p>Example response (422):</p>
+        </blockquote>
+                <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;message&quot;: &quot;Nieprawidłowe dane logowania.&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-POSTapi-admin-login" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-POSTapi-admin-login"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-POSTapi-admin-login"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-POSTapi-admin-login" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-POSTapi-admin-login">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-POSTapi-admin-login" data-method="POST"
+      data-path="api/admin/login"
+      data-authed="0"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('POSTapi-admin-login', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-POSTapi-admin-login"
+                    onclick="tryItOut('POSTapi-admin-login');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-POSTapi-admin-login"
+                    onclick="cancelTryOut('POSTapi-admin-login');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-POSTapi-admin-login"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-black">POST</small>
+            <b><code>api/admin/login</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="POSTapi-admin-login"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="POSTapi-admin-login"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>email</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="email"                data-endpoint="POSTapi-admin-login"
+               value="superadmin@example.com"
+               data-component="body">
+    <br>
+<p>Adres e-mail użytkownika. Example: <code>superadmin@example.com</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>password</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="password"                data-endpoint="POSTapi-admin-login"
+               value="password123"
+               data-component="body">
+    <br>
+<p>Hasło użytkownika. Example: <code>password123</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>device_name</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+                <input type="text" style="display: none"
+                              name="device_name"                data-endpoint="POSTapi-admin-login"
+               value="admin-panel"
+               data-component="body">
+    <br>
+<p>optional Nazwa urządzenia / klienta (do nazwania tokenu). Example: <code>admin-panel</code></p>
+        </div>
+        </form>
+
+                    <h2 id="admin-GETapi-admin-users">List Admin and Super Admin Users
 
 Retrieves a paginated list of users who have either the `admin` or `super-admin` role.
 Only accessible by users with the `super-admin` role.</h2>
@@ -709,14 +921,12 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
     
 
-                                <h2 id="customer-POSTapi-user-register">User Registration
-
-Creates a new customer account and returns an API token.</h2>
+                                <h2 id="customer-POSTapi-user-register">Register a new customer account.</h2>
 
 <p>
 </p>
 
-
+<p>Creates a new user with the &quot;customer&quot; role and returns an API token.</p>
 
 <span id="example-requests-POSTapi-user-register">
 <blockquote>Example request:</blockquote>
@@ -768,7 +978,7 @@ fetch(url, {
                 <pre>
 
 <code class="language-json" style="max-height: 300px;">{
-    &quot;message&quot;: &quot;The account has been successfully created.&quot;,
+    &quot;message&quot;: &quot;Konto zostało utworzone pomyślnie.&quot;,
     &quot;user&quot;: {
         &quot;id&quot;: 12,
         &quot;name&quot;: &quot;John Doe&quot;,
@@ -778,6 +988,20 @@ fetch(url, {
         ]
     },
     &quot;token&quot;: &quot;1|abc123xyz...&quot;
+}</code>
+ </pre>
+            <blockquote>
+            <p>Example response (422):</p>
+        </blockquote>
+                <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;message&quot;: &quot;The given data was invalid.&quot;,
+    &quot;errors&quot;: {
+        &quot;email&quot;: [
+            &quot;The email has already been taken.&quot;
+        ]
+    }
 }</code>
  </pre>
     </span>
@@ -893,7 +1117,176 @@ You can check the Dev Tools console for debugging information.</code></pre>
                value="test1234"
                data-component="body">
     <br>
-<p>Password confirmation. Example: <code>test1234</code></p>
+<p>Must match the password field. Example: <code>test1234</code></p>
+        </div>
+        </form>
+
+                    <h2 id="customer-POSTapi-user-login">Log in an existing customer.</h2>
+
+<p>
+</p>
+
+<p>Validates user credentials and returns an access token if successful.</p>
+
+<span id="example-requests-POSTapi-user-login">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request POST \
+    "http://localhost:8000/api/user/login" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json" \
+    --data "{
+    \"email\": \"john@example.com\",
+    \"password\": \"test1234\"
+}"
+</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost:8000/api/user/login"
+);
+
+const headers = {
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "email": "john@example.com",
+    "password": "test1234"
+};
+
+fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-POSTapi-user-login">
+            <blockquote>
+            <p>Example response (200):</p>
+        </blockquote>
+                <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;message&quot;: &quot;Zalogowano pomyślnie.&quot;,
+    &quot;user&quot;: {
+        &quot;id&quot;: 12,
+        &quot;name&quot;: &quot;John Doe&quot;,
+        &quot;email&quot;: &quot;john@example.com&quot;,
+        &quot;roles&quot;: [
+            &quot;customer&quot;
+        ]
+    },
+    &quot;token&quot;: &quot;1|abc123xyz...&quot;
+}</code>
+ </pre>
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;message&quot;: &quot;Nieprawidłowy e-mail lub hasło.&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-POSTapi-user-login" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-POSTapi-user-login"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-POSTapi-user-login"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-POSTapi-user-login" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-POSTapi-user-login">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-POSTapi-user-login" data-method="POST"
+      data-path="api/user/login"
+      data-authed="0"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('POSTapi-user-login', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-POSTapi-user-login"
+                    onclick="tryItOut('POSTapi-user-login');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-POSTapi-user-login"
+                    onclick="cancelTryOut('POSTapi-user-login');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-POSTapi-user-login"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-black">POST</small>
+            <b><code>api/user/login</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="POSTapi-user-login"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="POSTapi-user-login"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>email</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="email"                data-endpoint="POSTapi-user-login"
+               value="john@example.com"
+               data-component="body">
+    <br>
+<p>The registered email address. Example: <code>john@example.com</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>password</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="password"                data-endpoint="POSTapi-user-login"
+               value="test1234"
+               data-component="body">
+    <br>
+<p>The account password. Example: <code>test1234</code></p>
         </div>
         </form>
 
@@ -1780,6 +2173,146 @@ You can check the Dev Tools console for debugging information.</code></pre>
                data-component="url">
     <br>
 <p>The ID of the sub-user to delete. Example: <code>21</code></p>
+            </div>
+                    </form>
+
+                <h1 id="endpoints">Endpoints</h1>
+
+    
+
+                                <h2 id="endpoints-GETapi-translations--lang-">GET api/translations/{lang}</h2>
+
+<p>
+</p>
+
+
+
+<span id="example-requests-GETapi-translations--lang-">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request GET \
+    --get "http://localhost:8000/api/translations/architecto" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json"</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost:8000/api/translations/architecto"
+);
+
+const headers = {
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+fetch(url, {
+    method: "GET",
+    headers,
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-GETapi-translations--lang-">
+            <blockquote>
+            <p>Example response (200):</p>
+        </blockquote>
+                <details class="annotation">
+            <summary style="cursor: pointer;">
+                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
+            </summary>
+            <pre><code class="language-http">cache-control: no-cache, private
+content-type: application/json
+x-ratelimit-limit: 60
+x-ratelimit-remaining: 59
+access-control-allow-origin: *
+ </code></pre></details>         <pre>
+
+<code class="language-json" style="max-height: 300px;">[]</code>
+ </pre>
+    </span>
+<span id="execution-results-GETapi-translations--lang-" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-GETapi-translations--lang-"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-GETapi-translations--lang-"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-GETapi-translations--lang-" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-GETapi-translations--lang-">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-GETapi-translations--lang-" data-method="GET"
+      data-path="api/translations/{lang}"
+      data-authed="0"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('GETapi-translations--lang-', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-GETapi-translations--lang-"
+                    onclick="tryItOut('GETapi-translations--lang-');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-GETapi-translations--lang-"
+                    onclick="cancelTryOut('GETapi-translations--lang-');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-GETapi-translations--lang-"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-green">GET</small>
+            <b><code>api/translations/{lang}</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="GETapi-translations--lang-"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="GETapi-translations--lang-"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
+                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>lang</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="lang"                data-endpoint="GETapi-translations--lang-"
+               value="architecto"
+               data-component="url">
+    <br>
+<p>Example: <code>architecto</code></p>
             </div>
                     </form>
 

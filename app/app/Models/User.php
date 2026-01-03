@@ -59,4 +59,5 @@ class User extends Authenticatable
     {
         return $this->belongsTo(CompanyProfile::class, 'company_id');
     }
+
 }

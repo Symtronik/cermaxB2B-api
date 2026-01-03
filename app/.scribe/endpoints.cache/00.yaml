@@ -12,11 +12,8 @@ endpoints:
       groupDescription: ''
       subgroup: ''
       subgroupDescription: ''
-      title: |-
-        User Registration
-
-        Creates a new customer account and returns an API token.
-      description: ''
+      title: 'Register a new customer account.'
+      description: 'Creates a new user with the "customer" role and returns an API token.'
       authenticated: false
       deprecated: false
       custom: []
@@ -60,7 +57,7 @@ endpoints:
         custom: []
       password_confirmation:
         name: password_confirmation
-        description: 'Password confirmation.'
+        description: 'Must match the password field.'
         required: true
         example: test1234
         type: string
@@ -79,14 +76,104 @@ endpoints:
         status: 201
         content: |-
           {
-            "message": "The account has been successfully created.",
+            "message": "Konto zostało utworzone pomyślnie.",
             "user": {
-                "id": 12,
-                "name": "John Doe",
-                "email": "john@example.com",
-                "roles": ["customer"]
+              "id": 12,
+              "name": "John Doe",
+              "email": "john@example.com",
+              "roles": ["customer"]
             },
             "token": "1|abc123xyz..."
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 422
+        content: |-
+          {
+            "message": "The given data was invalid.",
+            "errors": {
+              "email": ["The email has already been taken."]
+            }
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - POST
+    uri: api/user/login
+    metadata:
+      groupName: Customer
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Log in an existing customer.'
+      description: 'Validates user credentials and returns an access token if successful.'
+      authenticated: false
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      email:
+        name: email
+        description: 'The registered email address.'
+        required: true
+        example: john@example.com
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      password:
+        name: password
+        description: 'The account password.'
+        required: true
+        example: test1234
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanBodyParameters:
+      email: john@example.com
+      password: test1234
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "message": "Zalogowano pomyślnie.",
+            "user": {
+              "id": 12,
+              "name": "John Doe",
+              "email": "john@example.com",
+              "roles": ["customer"]
+            },
+            "token": "1|abc123xyz..."
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 401
+        content: |-
+          {
+            "message": "Nieprawidłowy e-mail lub hasło."
           }
         headers: []
         description: ''
