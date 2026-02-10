@@ -40,6 +40,7 @@ class AdminLoginController extends Controller
      *   "message": "Brak uprawnień do panelu administratora."
      * }
      */
+
     public function login(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -48,39 +49,45 @@ class AdminLoginController extends Controller
             'device_name' => ['nullable', 'string', 'max:255'],
         ]);
 
-        // znajdź usera po e-mailu
         $user = User::where('email', $data['email'])->first();
 
-        // brak usera lub złe hasło
         if (! $user || ! Hash::check($data['password'], $user->password)) {
             return response()->json([
                 'message' => 'Nieprawidłowe dane logowania.',
             ], 422);
         }
 
-        // user musi mieć rolę admin lub super-admin, żeby wejść do panelu admina
         if (! $user->hasAnyRole(['admin', 'super-admin'])) {
             return response()->json([
                 'message' => 'Brak uprawnień do panelu administratora.',
             ], 403);
         }
 
-        // opcjonalnie: wyczyść stare tokeny dla panelu admina (jeśli chcesz mieć 1 aktywny)
-        // $user->tokens()->where('name', 'admin-panel')->delete();
+        // ✅ jeśli wdrażasz blokowanie dostępów
+        if (!empty($user->blocked_at)) {
+            return response()->json([
+                'message' => 'Konto jest zablokowane.',
+            ], 403);
+        }
+
+        // ✅ KLUCZ: aktualizuj last_login_at (u Ciebie event się nie odpala)
+        $user->forceFill(['last_login_at' => now()])->save();
 
         $tokenName = $data['device_name'] ?? 'admin-panel';
 
-        // utwórz token sanctum
+        // opcjonalnie: wyczyść stare tokeny dla panelu admina (1 aktywny token)
+        // $user->tokens()->where('name', $tokenName)->delete();
+
         $token = $user->createToken($tokenName);
 
         return response()->json([
             'token' => $token->plainTextToken,
             'user'  => [
-                'id'    => $user->id,
-                'name'  => $user->name,
-                'email' => $user->email,
-                'roles' => $user->getRoleNames()->values(),
-                'permissions' => $user->getAllPermissions()->pluck('name')->values(),
+                'id'          => $user->id,
+                'name'        => $user->name,
+                'email'       => $user->email,
+                'roles'       => $user->getRoleNames()->values()->all(),
+                'permissions' => $user->getAllPermissions()->pluck('name')->values()->all(),
             ],
         ]);
     }

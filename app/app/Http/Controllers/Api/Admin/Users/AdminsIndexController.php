@@ -26,13 +26,11 @@ class AdminsIndexController extends Controller
      *       "id": 1,
      *       "name": "Sylwia",
      *       "email": "sylwia@example.com",
-     *       "roles": ["admin"]
-     *     },
-     *     {
-     *       "id": 2,
-     *       "name": "John Doe",
-     *       "email": "john@example.com",
-     *       "roles": ["super-admin","admin"]
+     *       "roles": ["admin"],
+     *       "created_at": "2025-12-01T10:00:00Z",
+     *       "last_login_at": "2026-01-05T09:30:00Z",
+     *       "is_active": true,
+     *       "blocked_at": null
      *     }
      *   ],
      *   "current_page": 1,
@@ -40,16 +38,22 @@ class AdminsIndexController extends Controller
      *   "total": 2
      * }
      */
-
     public function index(Request $request): JsonResponse
     {
-        $q        = trim((string)$request->query('q', ''));
-        $perPage  = (int) $request->query('per_page', 25);
-        $perPage  = max(1, min($perPage, 100));
+        $q = trim((string) $request->query('q', ''));
+        $perPage = (int) $request->query('per_page', 100);
+        $perPage = max(1, min(100, $perPage));
 
-        // Pobieramy tylko userów mających którąkolwiek z ról: admin/super-admin
         $builder = User::query()
-            ->role(['admin', 'super-admin'])   // wymaga Spatie HasRoles na modelu
+            ->select([
+                'id',
+                'name',
+                'email',
+                'created_at',
+                'last_login_at',
+                'blocked_at',
+            ])
+            ->role(['admin', 'super-admin'])
             ->with('roles')
             ->when($q !== '', function ($sql) use ($q) {
                 $sql->where(function ($s) use ($q) {
@@ -61,16 +65,28 @@ class AdminsIndexController extends Controller
 
         $paginator = $builder->paginate($perPage);
 
-        // Sformatuj odpowiedź: dodaj tablicę nazw ról
-        $paginator->getCollection()->transform(function (User $u) {
+        $data = $paginator->getCollection()->map(function (User $u) {
             return [
-                'id'    => $u->id,
-                'name'  => $u->name,
+                'id' => $u->id,
+                'name' => $u->name,
                 'email' => $u->email,
-                'roles' => $u->getRoleNames()->values(), // ["admin","super-admin",...]
-            ];
-        });
+                'roles' => $u->getRoleNames()->values()->all(),
 
-        return response()->json($paginator);
+                'created_at' => $u->created_at?->toISOString(),
+                'last_login_at' => $u->last_login_at?->toISOString(),
+                'blocked_at' => $u->blocked_at?->toISOString(),
+
+
+                'is_active' => $u->blocked_at === null,
+
+            ];
+        })->values()->all();
+
+        return response()->json([
+            'data' => $data,
+            'current_page' => $paginator->currentPage(),
+            'per_page' => $paginator->perPage(),
+            'total' => $paginator->total(),
+        ]);
     }
 }
