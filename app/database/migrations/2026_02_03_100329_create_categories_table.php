@@ -16,9 +16,6 @@ return new class extends Migration
 
             $table->string('name');
             $table->string('slug')->unique();
-
-            $table->string('image_path')->nullable();
-
             $table->string('seo_title')->nullable();
             $table->string('seo_description', 180)->nullable();
             $table->timestamps();
