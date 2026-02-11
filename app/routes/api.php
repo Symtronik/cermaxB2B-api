@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\Auth\RegisterAdminController;
 use App\Http\Controllers\Api\Admin\Users\AdminsIndexController;
 use App\Http\Controllers\Api\Admin\Users\AdminsStoreController;
 use App\Http\Controllers\Api\Admin\Users\AdminStatusController;
+use App\Http\Controllers\Api\Admin\Settings\VatController;
 
 use App\Http\Controllers\Api\Admin\Category\CategoryController;
 use App\Http\Controllers\Api\Admin\Series\SeriesController;
@@ -47,6 +48,11 @@ Route::prefix('user')
         Route::delete('users/{userId}', [CompanyUserController::class, 'destroy']);
     });
 
+Route::middleware(['auth:sanctum'])->group(function () {
+    // VAT do selecta (tylko aktywne)
+    Route::get('vats', [VatController::class, 'index']);
+});
+
 /*
 |--------------------------------------------------------------------------
 | Admin auth (public)
@@ -68,6 +74,14 @@ Route::middleware(['auth:sanctum', 'role:admin|super-admin'])->group(function ()
     // Serie (z obrazkiem) — update przez POST + _method=PUT
     Route::apiResource('series', SeriesController::class)->except(['update']);
     Route::post('series/{series}', [SeriesController::class, 'update']);
+
+    Route::get('vats/manage', [VatController::class, 'manage']); // paginacja + search do tabeli
+    Route::post('vats', [VatController::class, 'store']);
+    Route::put('vats/{vat}', [VatController::class, 'update']);
+    Route::delete('vats/{vat}', [VatController::class, 'destroy']);
+    Route::patch('vats/{vat}/default', [VatController::class, 'setDefault']);
+    Route::patch('vats/{vat}/toggle', [VatController::class, 'toggle']);
+    Route::get('vats/{vat}', [VatController::class, 'show']);
 });
 
 /*
