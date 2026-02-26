@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\Admin\Settings\VatController;
 
 use App\Http\Controllers\Api\Admin\Category\CategoryController;
 use App\Http\Controllers\Api\Admin\Series\SeriesController;
+use App\Http\Controllers\Api\UserProfile\UserProfileController;
 
 /*
 |--------------------------------------------------------------------------
@@ -72,8 +73,10 @@ Route::middleware(['auth:sanctum', 'role:admin|super-admin'])->group(function ()
     Route::apiResource('categories', CategoryController::class);
 
     // Serie (z obrazkiem) — update przez POST + _method=PUT
-    Route::apiResource('series', SeriesController::class)->except(['update']);
-    Route::post('series/{series}', [SeriesController::class, 'update']);
+    // Route::apiResource('series', SeriesController::class)->except(['update']);
+    // Route::post('series/{series}', [SeriesController::class, 'update']);
+    Route::apiResource('series', SeriesController::class);
+
 
     Route::get('vats/manage', [VatController::class, 'manage']); // paginacja + search do tabeli
     Route::post('vats', [VatController::class, 'store']);
@@ -100,3 +103,11 @@ Route::prefix('admin')
 
         Route::patch('users/{user}/status', [AdminStatusController::class, 'update']);
     });
+
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/me', [UserProfileController::class, 'me']);
+    Route::put('/me', [UserProfileController::class, 'update']);
+    Route::put('/me/password', [UserProfileController::class, 'changePassword']);
+});
+

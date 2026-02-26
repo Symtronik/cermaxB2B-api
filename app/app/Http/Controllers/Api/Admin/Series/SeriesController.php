@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\Series\SeriesStoreRequest;
 use App\Http\Requests\Admin\Series\SeriesUpdateRequest;
 use App\Models\Series;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -14,21 +15,33 @@ class SeriesController extends Controller
 {
     public function index(Request $request)
     {
+        $perPage = (int) $request->get('per_page', 20);
+        $perPage = max(1, min(100, $perPage));
+
         $q = Series::query()
-            ->with('category')
+            ->with('categories') // ✅
             ->orderBy('name');
 
+        // ✅ filtr po kategorii (seria może należeć do wielu)
         if ($categoryId = $request->integer('category_id')) {
-            $q->where('category_id', $categoryId);
+            $q->whereHas('categories', fn ($qq) => $qq->where('categories.id', $categoryId));
         }
 
-        if ($search = $request->string('search')->toString()) {
-            $q->where('name', 'like', "%{$search}%")
-              ->orWhere('slug', 'like', "%{$search}%");
+        $search = trim((string) $request->get('search', ''));
+        if ($search !== '') {
+            $q->where(function ($qq) use ($search) {
+                $qq->where('name', 'like', "%{$search}%")
+                    ->orWhere('slug', 'like', "%{$search}%");
+            });
         }
+
+        // jeśli chcesz DTO także w index:
+        // $page = $q->paginate($perPage);
+        // $page->getCollection()->transform(fn($s) => $this->toDto($s));
+        // return response()->json(['data' => $page]);
 
         return response()->json([
-            'data' => $q->paginate((int) $request->get('per_page', 20)),
+            'data' => $q->paginate($perPage),
         ]);
     }
 
@@ -36,24 +49,41 @@ class SeriesController extends Controller
     {
         $data = $request->validated();
 
-        $slug = $data['slug'] ?? Str::slug($data['name']);
-        $data['slug'] = $this->uniqueSlug($slug);
+        $baseSlug = $data['slug'] ?? Str::slug($data['name'] ?? '');
+        $slug = $this->uniqueSlug($baseSlug);
 
+        $isActive = array_key_exists('is_active', $data) ? (bool) $data['is_active'] : true;
+
+        $imagePath = null;
         if ($request->hasFile('image')) {
-            $data['image_path'] = $request->file('image')->store('series', 'public');
+            $imagePath = $request->file('image')->store('series', 'public');
         }
 
-        $series = Series::create($data);
+        $series = DB::transaction(function () use ($data, $slug, $isActive, $imagePath) {
+            $series = Series::create([
+                'name' => $data['name'],
+                'slug' => $slug,
+                'is_active' => $isActive,
+                'seo_title' => $data['seo_title'] ?? null,
+                'seo_description' => $data['seo_description'] ?? null,
+                'image_path' => $imagePath,
+            ]);
+
+            // ✅ przypisanie do wielu kategorii (obowiązkowe)
+            $series->categories()->sync($data['category_ids']);
+
+            return $series;
+        });
 
         return response()->json([
-            'data' => $this->toDto($series->load('category')),
+            'data' => $this->toDto($series->fresh()->load('categories')),
         ], 201);
     }
 
     public function show(Series $series)
     {
         return response()->json([
-            'data' => $this->toDto($series->load('category')),
+            'data' => $this->toDto($series->load('categories')),
         ]);
     }
 
@@ -61,32 +91,57 @@ class SeriesController extends Controller
     {
         $data = $request->validated();
 
+        // slug jeśli przesłany (albo pusty -> z name)
         if (array_key_exists('slug', $data)) {
             $candidate = $data['slug'] ?: Str::slug($data['name'] ?? $series->name);
             $data['slug'] = $this->uniqueSlug($candidate, $series->id);
+        } elseif (array_key_exists('name', $data)) {
+            $data['slug'] = $this->uniqueSlug(Str::slug($data['name']), $series->id);
         }
 
+        $oldImagePath = $series->image_path;
+
+        // remove_image: usuń bez wgrywania nowego
+        if ($request->boolean('remove_image')) {
+            $data['image_path'] = null;
+        }
+
+        // nowy obrazek nadpisuje wszystko
         if ($request->hasFile('image')) {
-            if ($series->image_path) {
-                Storage::disk('public')->delete($series->image_path);
-            }
             $data['image_path'] = $request->file('image')->store('series', 'public');
         }
 
-        $series->update($data);
+        DB::transaction(function () use ($series, $data) {
+            $categoryIds = $data['category_ids'] ?? null;
+            unset($data['category_ids']); // ✅ nie jest kolumną
+
+            $series->update($data);
+
+            if (is_array($categoryIds)) {
+                $series->categories()->sync($categoryIds);
+            }
+        });
+
+        $newImagePath = $series->fresh()->image_path;
+
+        if ($oldImagePath && $oldImagePath !== $newImagePath) {
+            Storage::disk('public')->delete($oldImagePath);
+        }
 
         return response()->json([
-            'data' => $this->toDto($series->fresh()->load('category')),
+            'data' => $this->toDto($series->fresh()->load('categories')),
         ]);
     }
 
     public function destroy(Series $series)
     {
-        if ($series->image_path) {
-            Storage::disk('public')->delete($series->image_path);
-        }
+        $imagePath = $series->image_path;
 
         $series->delete();
+
+        if ($imagePath) {
+            Storage::disk('public')->delete($imagePath);
+        }
 
         return response()->json(['ok' => true]);
     }
@@ -101,6 +156,7 @@ class SeriesController extends Controller
         $i = 0;
         while (true) {
             $candidate = $i === 0 ? $slug : "{$slug}-{$i}";
+
             $exists = Series::query()
                 ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
                 ->where('slug', $candidate)
@@ -113,17 +169,30 @@ class SeriesController extends Controller
 
     private function toDto(Series $series): array
     {
+        $categories = $series->relationLoaded('categories')
+            ? $series->categories
+            : collect();
+
         return [
             'id' => $series->id,
-            'category_id' => $series->category_id,
-            'category_name' => $series->category?->name,
+
+            // ✅ pod many-to-many
+            'category_ids' => $categories->pluck('id')->values(),
+            'categories' => $categories->map(fn ($c) => [
+                'id' => $c->id,
+                'name' => $c->name,
+                'slug' => $c->slug,
+            ])->values(),
 
             'name' => $series->name,
             'slug' => $series->slug,
 
+            'is_active' => (bool) $series->is_active,
+
             'seo_title' => $series->seo_title,
             'seo_description' => $series->seo_description,
 
+            'image_path' => $series->image_path,
             'image_url' => $series->image_path
                 ? Storage::disk('public')->url($series->image_path)
                 : null,

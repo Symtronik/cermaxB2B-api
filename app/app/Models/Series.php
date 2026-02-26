@@ -7,21 +7,20 @@ use Illuminate\Database\Eloquent\Model;
 class Series extends Model
 {
     protected $fillable = [
-        'category_id',
         'name',
         'slug',
         'image_path',
+        'is_active',
         'seo_title',
         'seo_description',
     ];
 
-    public function category()
-    {
-        return $this->belongsTo(Category::class);
-    }
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
 
-    // public function products()
-    // {
-    //     return $this->hasMany(Product::class);
-    // }
+    public function categories()
+    {
+        return $this->belongsToMany(Category::class, 'category_series')->withTimestamps();
+    }
 }
