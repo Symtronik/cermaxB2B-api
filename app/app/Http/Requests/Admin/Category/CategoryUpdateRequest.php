@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\Admin\Products;
+namespace App\Http\Requests\Admin\Category;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -27,7 +27,7 @@ class CategoryUpdateRequest extends FormRequest
                 Rule::unique('categories', 'slug')->ignore($categoryId),
             ],
 
-            'is_active' => ['sometimes', 'boolean'],          
+            'is_active' => ['sometimes', 'boolean'],
             'remove_image' => ['sometimes', 'boolean'],
 
             'image' => ['sometimes', 'nullable', 'file', 'image', 'max:4096'],

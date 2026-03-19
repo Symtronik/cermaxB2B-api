@@ -19,6 +19,8 @@ use App\Http\Controllers\Api\Admin\Settings\VatController;
 use App\Http\Controllers\Api\Admin\Category\CategoryController;
 use App\Http\Controllers\Api\Admin\Series\SeriesController;
 use App\Http\Controllers\Api\UserProfile\UserProfileController;
+use App\Http\Controllers\Api\Admin\Attribute\AttributeController;
+use App\Http\Controllers\Api\Admin\Product\ProductController;
 
 /*
 |--------------------------------------------------------------------------
@@ -85,6 +87,11 @@ Route::middleware(['auth:sanctum', 'role:admin|super-admin'])->group(function ()
     Route::patch('vats/{vat}/default', [VatController::class, 'setDefault']);
     Route::patch('vats/{vat}/toggle', [VatController::class, 'toggle']);
     Route::get('vats/{vat}', [VatController::class, 'show']);
+
+    Route::get('attributes/select', [AttributeController::class, 'select']);
+    Route::apiResource('attributes', AttributeController::class);
+
+    Route::apiResource('products', ProductController::class);
 });
 
 /*

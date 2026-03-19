@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api\Admin\Category;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\Products\CategoryStoreRequest;
-use App\Http\Requests\Admin\Products\CategoryUpdateRequest;
+use App\Http\Requests\Admin\Category\CategoryStoreRequest;
+use App\Http\Requests\Admin\Category\CategoryUpdateRequest;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
