@@ -27,6 +27,14 @@ use App\Http\Controllers\Api\Admin\Product\ProductController;
 | Public
 |--------------------------------------------------------------------------
 */
+Route::get('/test', function () {
+    return response()->json([
+        'status' => 'ok',
+        'message' => 'API działa',
+        'time' => now(),
+    ]);
+});
+
 Route::post('user/register', [AuthController::class, 'register'])->middleware('throttle:10,1');
 Route::post('user/login', [AuthController::class, 'login']);
 

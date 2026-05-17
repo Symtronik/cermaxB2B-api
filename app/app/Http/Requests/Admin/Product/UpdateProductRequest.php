@@ -18,8 +18,21 @@ class UpdateProductRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:255'],
-            'sku' => ['nullable', 'string', 'max:255', Rule::unique('products', 'sku')->ignore($productId)],
-            'ean' => ['nullable', 'string', 'max:255', Rule::unique('products', 'ean')->ignore($productId)],
+
+            'sku' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::unique('products', 'sku')->ignore($productId),
+            ],
+
+            'ean' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::unique('products', 'ean')->ignore($productId),
+            ],
+
             'description' => ['nullable', 'string'],
 
             'category_id' => ['required', 'exists:categories,id'],
@@ -38,16 +51,47 @@ class UpdateProductRequest extends FormRequest
             'diameter' => ['nullable', 'numeric', 'min:0'],
             'width' => ['nullable', 'numeric', 'min:0'],
             'length' => ['nullable', 'numeric', 'min:0'],
+
             'color' => ['nullable', 'string', 'max:255'],
             'weight' => ['nullable', 'numeric', 'min:0'],
 
+            'is_active' => ['nullable', 'boolean'],
+
             'attributes' => ['nullable', 'array'],
-            'attributes.*.attribute_id' => ['required', 'exists:attributes,id'],
+
+            'attributes.*.attribute_id' => [
+                'required',
+                'exists:attributes,id',
+            ],
+
             'attributes.*.value' => ['nullable'],
 
             'images' => ['nullable', 'array'],
-            'images.*' => ['file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'main_image_index' => ['nullable', 'integer', 'min:0'],
+
+            'images.*' => [
+                'file',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
+            ],
+
+            'existing_images' => ['nullable', 'array'],
+
+            'existing_images.*.id' => [
+                'required',
+                'exists:product_images,id',
+            ],
+
+            'existing_images.*.sort_order' => [
+                'nullable',
+                'integer',
+                'min:0',
+            ],
+
+            'existing_images.*.is_main' => [
+                'nullable',
+                'boolean',
+            ],
 
             'main_image_index' => ['nullable', 'integer', 'min:0'],
         ];

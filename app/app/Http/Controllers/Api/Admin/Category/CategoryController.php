@@ -8,7 +8,6 @@ use App\Http\Requests\Admin\Category\CategoryUpdateRequest;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class CategoryController extends Controller
@@ -25,7 +24,7 @@ class CategoryController extends Controller
             ->when($search !== '', function ($q) use ($search) {
                 $q->where(function ($qq) use ($search) {
                     $qq->where('name', 'like', "%{$search}%")
-                       ->orWhere('slug', 'like', "%{$search}%");
+                        ->orWhere('slug', 'like', "%{$search}%");
                 });
             });
 
@@ -41,13 +40,12 @@ class CategoryController extends Controller
         $baseSlug = $data['slug'] ?? Str::slug($data['name'] ?? '');
         $data['slug'] = $this->uniqueSlug($baseSlug);
 
-        // jeśli nie przyszło, zostanie default z DB; ale zostawiamy defensywnie:
         if (!array_key_exists('is_active', $data)) {
             $data['is_active'] = true;
         }
 
         if ($request->hasFile('image')) {
-            $data['image_path'] = $request->file('image')->store('categories', 'public');
+            $data['image_path'] = $this->saveImageToPublicStorage($request->file('image'));
         }
 
         $category = Category::create($data);
@@ -68,9 +66,6 @@ class CategoryController extends Controller
     {
         $data = $request->validated();
 
-        // Slug handling:
-        // - if "slug" present: recalc unique from slug or name fallback
-        // - else if "name" present: recalc slug from name (admin-friendly default)
         if (array_key_exists('slug', $data)) {
             $base = $data['slug'] ?: Str::slug($data['name'] ?? $category->name);
             $data['slug'] = $this->uniqueSlug($base, $category->id);
@@ -78,29 +73,24 @@ class CategoryController extends Controller
             $data['slug'] = $this->uniqueSlug(Str::slug($data['name']), $category->id);
         }
 
-        // ✅ zapamiętaj stary obrazek przed zmianą
         $oldImagePath = $category->image_path;
 
-        // ✅ remove_image (usuń bez wgrywania nowego)
-        // frontend wysyła remove_image=1 gdy user kliknie "Usuń"
         if ($request->boolean('remove_image')) {
             $data['image_path'] = null;
         }
 
-        // ✅ nowy obrazek nadpisuje wszystko (i anuluje remove_image)
         if ($request->hasFile('image')) {
-            $data['image_path'] = $request->file('image')->store('categories', 'public');
+            $data['image_path'] = $this->saveImageToPublicStorage($request->file('image'));
         }
 
         DB::transaction(function () use ($category, $data) {
             $category->update($data);
         });
 
-        // ✅ usuń stary plik, jeśli został zmieniony lub usunięty
         $newImagePath = $category->fresh()->image_path;
 
         if ($oldImagePath && $oldImagePath !== $newImagePath) {
-            Storage::disk('public')->delete($oldImagePath);
+            $this->deleteImageFromPublicStorage($oldImagePath);
         }
 
         return response()->json([
@@ -115,15 +105,100 @@ class CategoryController extends Controller
         $category->delete();
 
         if ($imagePath) {
-            Storage::disk('public')->delete($imagePath);
+            $this->deleteImageFromPublicStorage($imagePath);
         }
 
         return response()->json(['ok' => true]);
     }
 
+    private function saveImageToPublicStorage($file): string
+{
+    $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+
+    $cleanName = Str::slug($originalName);
+
+    $random = Str::random(6);
+
+    $fileName = $cleanName . '-' . $random . '.jpg';
+
+    $destinationPath = public_path('storage/categories');
+
+    if (!file_exists($destinationPath)) {
+        mkdir($destinationPath, 0755, true);
+    }
+
+    $sourcePath = $file->getRealPath();
+    $imageInfo = getimagesize($sourcePath);
+
+    if (!$imageInfo) {
+        $file->move($destinationPath, $fileName);
+        return 'storage/categories/' . $fileName;
+    }
+
+    [$originalWidth, $originalHeight] = $imageInfo;
+    $mime = $imageInfo['mime'];
+
+    $newWidth = 400;
+    $newHeight = (int) round(($originalHeight / $originalWidth) * $newWidth);
+
+    switch ($mime) {
+        case 'image/jpeg':
+            $sourceImage = imagecreatefromjpeg($sourcePath);
+            break;
+
+        case 'image/png':
+            $sourceImage = imagecreatefrompng($sourcePath);
+            break;
+
+        case 'image/webp':
+            $sourceImage = imagecreatefromwebp($sourcePath);
+            break;
+
+        default:
+            $file->move($destinationPath, $fileName);
+            return 'storage/categories/' . $fileName;
+    }
+
+    $newImage = imagecreatetruecolor($newWidth, $newHeight);
+
+    imagecopyresampled(
+        $newImage,
+        $sourceImage,
+        0,
+        0,
+        0,
+        0,
+        $newWidth,
+        $newHeight,
+        $originalWidth,
+        $originalHeight
+    );
+
+    imagejpeg($newImage, $destinationPath . '/' . $fileName, 82);
+
+    imagedestroy($sourceImage);
+    imagedestroy($newImage);
+
+    return 'storage/categories/' . $fileName;
+}
+
+    private function deleteImageFromPublicStorage(?string $path): void
+    {
+        if (!$path) {
+            return;
+        }
+
+        $fullPath = public_path($path);
+
+        if (file_exists($fullPath)) {
+            unlink($fullPath);
+        }
+    }
+
     private function uniqueSlug(string $base, ?int $ignoreId = null): string
     {
         $slug = Str::slug($base);
+
         if ($slug === '') {
             $slug = 'category';
         }
@@ -138,7 +213,7 @@ class CategoryController extends Controller
                 ->where('slug', $candidate)
                 ->exists();
 
-            if (! $exists) {
+            if (!$exists) {
                 return $candidate;
             }
 
@@ -152,12 +227,12 @@ class CategoryController extends Controller
             'id' => $category->id,
             'name' => $category->name,
             'slug' => $category->slug,
-            'is_active' => (bool) $category->is_active, // ✅ DODANE
+            'is_active' => (bool) $category->is_active,
             'seo_title' => $category->seo_title,
             'seo_description' => $category->seo_description,
             'image_path' => $category->image_path,
             'image_url' => $category->image_path
-                ? Storage::disk('public')->url($category->image_path)
+                ? asset($category->image_path)
                 : null,
             'created_at' => $category->created_at?->toIso8601String(),
             'updated_at' => $category->updated_at?->toIso8601String(),

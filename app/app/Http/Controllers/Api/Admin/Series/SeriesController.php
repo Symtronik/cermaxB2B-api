@@ -8,7 +8,6 @@ use App\Http\Requests\Admin\Series\SeriesUpdateRequest;
 use App\Models\Series;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class SeriesController extends Controller
@@ -19,26 +18,21 @@ class SeriesController extends Controller
         $perPage = max(1, min(100, $perPage));
 
         $q = Series::query()
-            ->with('categories') // ✅
+            ->with('categories')
             ->orderBy('name');
 
-        // ✅ filtr po kategorii (seria może należeć do wielu)
         if ($categoryId = $request->integer('category_id')) {
             $q->whereHas('categories', fn ($qq) => $qq->where('categories.id', $categoryId));
         }
 
         $search = trim((string) $request->get('search', ''));
+
         if ($search !== '') {
             $q->where(function ($qq) use ($search) {
                 $qq->where('name', 'like', "%{$search}%")
                     ->orWhere('slug', 'like', "%{$search}%");
             });
         }
-
-        // jeśli chcesz DTO także w index:
-        // $page = $q->paginate($perPage);
-        // $page->getCollection()->transform(fn($s) => $this->toDto($s));
-        // return response()->json(['data' => $page]);
 
         return response()->json([
             'data' => $q->paginate($perPage),
@@ -55,8 +49,9 @@ class SeriesController extends Controller
         $isActive = array_key_exists('is_active', $data) ? (bool) $data['is_active'] : true;
 
         $imagePath = null;
+
         if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('series', 'public');
+            $imagePath = $this->saveImageToPublicStorage($request->file('image'));
         }
 
         $series = DB::transaction(function () use ($data, $slug, $isActive, $imagePath) {
@@ -69,7 +64,6 @@ class SeriesController extends Controller
                 'image_path' => $imagePath,
             ]);
 
-            // ✅ przypisanie do wielu kategorii (obowiązkowe)
             $series->categories()->sync($data['category_ids']);
 
             return $series;
@@ -91,7 +85,6 @@ class SeriesController extends Controller
     {
         $data = $request->validated();
 
-        // slug jeśli przesłany (albo pusty -> z name)
         if (array_key_exists('slug', $data)) {
             $candidate = $data['slug'] ?: Str::slug($data['name'] ?? $series->name);
             $data['slug'] = $this->uniqueSlug($candidate, $series->id);
@@ -101,19 +94,18 @@ class SeriesController extends Controller
 
         $oldImagePath = $series->image_path;
 
-        // remove_image: usuń bez wgrywania nowego
         if ($request->boolean('remove_image')) {
             $data['image_path'] = null;
         }
 
-        // nowy obrazek nadpisuje wszystko
         if ($request->hasFile('image')) {
-            $data['image_path'] = $request->file('image')->store('series', 'public');
+            $data['image_path'] = $this->saveImageToPublicStorage($request->file('image'));
         }
 
         DB::transaction(function () use ($series, $data) {
             $categoryIds = $data['category_ids'] ?? null;
-            unset($data['category_ids']); // ✅ nie jest kolumną
+
+            unset($data['category_ids']);
 
             $series->update($data);
 
@@ -125,7 +117,7 @@ class SeriesController extends Controller
         $newImagePath = $series->fresh()->image_path;
 
         if ($oldImagePath && $oldImagePath !== $newImagePath) {
-            Storage::disk('public')->delete($oldImagePath);
+            $this->deleteImageFromPublicStorage($oldImagePath);
         }
 
         return response()->json([
@@ -140,20 +132,109 @@ class SeriesController extends Controller
         $series->delete();
 
         if ($imagePath) {
-            Storage::disk('public')->delete($imagePath);
+            $this->deleteImageFromPublicStorage($imagePath);
         }
 
         return response()->json(['ok' => true]);
     }
 
-    /* ===================================================== */
+    private function saveImageToPublicStorage($file): string
+{
+    $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+
+    $cleanName = Str::slug($originalName);
+
+    $random = Str::random(6);
+
+    $fileName = $cleanName . '-' . $random . '.jpg';
+
+    $destinationPath = public_path('storage/series');
+
+    if (!file_exists($destinationPath)) {
+        mkdir($destinationPath, 0755, true);
+    }
+
+    $sourcePath = $file->getRealPath();
+    $imageInfo = getimagesize($sourcePath);
+
+    if (!$imageInfo) {
+        $file->move($destinationPath, $fileName);
+
+        return 'series/' . $fileName;
+    }
+
+    [$originalWidth, $originalHeight] = $imageInfo;
+
+    $mime = $imageInfo['mime'];
+
+    $newWidth = 400;
+    $newHeight = (int) round(($originalHeight / $originalWidth) * $newWidth);
+
+    switch ($mime) {
+        case 'image/jpeg':
+            $sourceImage = imagecreatefromjpeg($sourcePath);
+            break;
+
+        case 'image/png':
+            $sourceImage = imagecreatefrompng($sourcePath);
+            break;
+
+        case 'image/webp':
+            $sourceImage = imagecreatefromwebp($sourcePath);
+            break;
+
+        default:
+            $file->move($destinationPath, $fileName);
+
+            return 'series/' . $fileName;
+    }
+
+    $newImage = imagecreatetruecolor($newWidth, $newHeight);
+
+    imagecopyresampled(
+        $newImage,
+        $sourceImage,
+        0,
+        0,
+        0,
+        0,
+        $newWidth,
+        $newHeight,
+        $originalWidth,
+        $originalHeight
+    );
+
+    imagejpeg($newImage, $destinationPath . '/' . $fileName, 82);
+
+    imagedestroy($sourceImage);
+    imagedestroy($newImage);
+
+    return 'series/' . $fileName;
+}
+
+   private function deleteImageFromPublicStorage(?string $path): void
+{
+    if (!$path) {
+        return;
+    }
+
+    $fullPath = public_path('storage/' . ltrim($path, '/'));
+
+    if (file_exists($fullPath)) {
+        unlink($fullPath);
+    }
+}
 
     private function uniqueSlug(string $base, ?int $ignoreId = null): string
     {
         $slug = Str::slug($base);
-        if ($slug === '') $slug = 'series';
+
+        if ($slug === '') {
+            $slug = 'series';
+        }
 
         $i = 0;
+
         while (true) {
             $candidate = $i === 0 ? $slug : "{$slug}-{$i}";
 
@@ -162,7 +243,10 @@ class SeriesController extends Controller
                 ->where('slug', $candidate)
                 ->exists();
 
-            if (! $exists) return $candidate;
+            if (!$exists) {
+                return $candidate;
+            }
+
             $i++;
         }
     }
@@ -175,28 +259,21 @@ class SeriesController extends Controller
 
         return [
             'id' => $series->id,
-
-            // ✅ pod many-to-many
             'category_ids' => $categories->pluck('id')->values(),
             'categories' => $categories->map(fn ($c) => [
                 'id' => $c->id,
                 'name' => $c->name,
                 'slug' => $c->slug,
             ])->values(),
-
             'name' => $series->name,
             'slug' => $series->slug,
-
             'is_active' => (bool) $series->is_active,
-
             'seo_title' => $series->seo_title,
             'seo_description' => $series->seo_description,
-
             'image_path' => $series->image_path,
             'image_url' => $series->image_path
-                ? Storage::disk('public')->url($series->image_path)
+                ? asset($series->image_path)
                 : null,
-
             'created_at' => $series->created_at?->toIso8601String(),
             'updated_at' => $series->updated_at?->toIso8601String(),
         ];

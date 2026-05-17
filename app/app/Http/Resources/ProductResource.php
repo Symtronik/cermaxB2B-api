@@ -36,6 +36,24 @@ class ProductResource extends JsonResource
             'color' => $this->color,
             'weight' => $this->weight,
 
+            'is_active' => (bool) $this->is_active,
+
+            'category' => $this->whenLoaded('category', function () {
+                return [
+                    'id' => $this->category?->id,
+                    'name' => $this->category?->name,
+                    'slug' => $this->category?->slug,
+                ];
+            }),
+
+            'series' => $this->whenLoaded('series', function () {
+                return [
+                    'id' => $this->series?->id,
+                    'name' => $this->series?->name,
+                    'slug' => $this->series?->slug,
+                ];
+            }),
+
             'attributes' => $this->whenLoaded('attributes', function () {
                 return $this->attributes->map(function ($attribute) {
                     return [
@@ -53,7 +71,7 @@ class ProductResource extends JsonResource
                     return [
                         'id' => $image->id,
                         'path' => $image->path,
-                        'url' => asset('storage/' . $image->path),
+                        'url' => asset('storage/' . ltrim($image->path, '/')),
                         'alt' => $image->alt,
                         'sort_order' => $image->sort_order,
                         'is_main' => (bool) $image->is_main,

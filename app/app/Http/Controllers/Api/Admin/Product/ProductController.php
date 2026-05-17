@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api\Admin\Product;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ProductResource;
 use App\Http\Requests\Admin\Product\StoreProductRequest;
@@ -14,37 +14,60 @@ use App\Http\Requests\Admin\Product\UpdateProductRequest;
 class ProductController extends Controller
 {
     public function index(Request $request)
-    {
-        $query = Product::with(['attributes', 'images']);
+{
+    $query = Product::with([
+        'category',
+        'series',
+        'attributes',
+        'images',
+    ]);
 
-        if ($search = $request->get('search')) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('sku', 'like', "%{$search}%")
-                    ->orWhere('ean', 'like', "%{$search}%")
-                    ->orWhere('color', 'like', "%{$search}%");
-            });
-        }
+    $search = trim((string) $request->input('search', ''));
 
-        if ($request->filled('attribute_id')) {
-            $attributeId = $request->integer('attribute_id');
-
-            $query->whereHas('attributes', function ($q) use ($attributeId) {
-                $q->where('attributes.id', $attributeId);
-            });
-        }
-
-        $products = $query->latest()->paginate($request->integer('per_page', 15));
-
-        return ProductResource::collection($products);
+    if ($search !== '') {
+        $query->where(function ($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%")
+                ->orWhere('sku', 'like', "%{$search}%")
+                ->orWhere('ean', 'like', "%{$search}%")
+                ->orWhere('description', 'like', "%{$search}%")
+                ->orWhere('color', 'like', "%{$search}%");
+        });
     }
+
+    if ($request->filled('attribute_id')) {
+        $query->whereHas('attributes', function ($q) use ($request) {
+            $q->where('attributes.id', (int) $request->input('attribute_id'));
+        });
+    }
+
+    if ($request->filled('category_id')) {
+        $query->where('category_id', (int) $request->input('category_id'));
+    }
+
+    if ($request->filled('series_id')) {
+        $query->where('series_id', (int) $request->input('series_id'));
+    }
+
+    $products = $query
+        ->latest()
+        ->paginate((int) $request->input('per_page', 15));
+
+    return ProductResource::collection($products);
+}
 
     public function store(StoreProductRequest $request)
     {
         $data = $request->validated();
 
         $attributes = $data['attributes'] ?? [];
-        unset($data['attributes'], $data['images'], $data['main_image_index']);
+
+        unset(
+            $data['attributes'],
+            $data['images'],
+            $data['main_image_index']
+        );
+
+        $data['is_active'] = $request->boolean('is_active', true);
 
         $product = DB::transaction(function () use ($request, $data, $attributes) {
             $product = Product::create($data);
@@ -62,14 +85,14 @@ class ProductController extends Controller
             return $product;
         });
 
-        $product->load(['attributes', 'images']);
+        $product->load(['category', 'series', 'attributes', 'images']);
 
         return new ProductResource($product);
     }
 
     public function show(Product $product)
     {
-        $product->load(['attributes', 'images']);
+        $product->load(['category', 'series', 'attributes', 'images']);
 
         return new ProductResource($product);
     }
@@ -79,16 +102,30 @@ class ProductController extends Controller
         $data = $request->validated();
 
         $attributes = $data['attributes'] ?? null;
-        unset($data['attributes'], $data['images'], $data['main_image_index']);
+        $existingImages = $data['existing_images'] ?? null;
 
-        DB::transaction(function () use ($request, $product, $data, $attributes) {
+        unset(
+            $data['attributes'],
+            $data['images'],
+            $data['existing_images'],
+            $data['main_image_index']
+        );
+
+        $data['is_active'] = $request->boolean('is_active', true);
+
+        DB::transaction(function () use ($request, $product, $data, $attributes, $existingImages) {
             $product->update($data);
 
             if (is_array($attributes)) {
                 $product->attributes()->sync($this->formatAttributesForSync($attributes));
             }
 
+            if (is_array($existingImages)) {
+                $this->syncExistingImages($product, $existingImages);
+            }
+
             $uploadedImages = $request->file('images', []);
+
             if (!empty($uploadedImages)) {
                 $this->storeUploadedImages(
                     product: $product,
@@ -97,9 +134,11 @@ class ProductController extends Controller
                     append: true
                 );
             }
+
+            $this->ensureMainImage($product);
         });
 
-        $product->load(['attributes', 'images']);
+        $product->load(['category', 'series', 'attributes', 'images']);
 
         return new ProductResource($product);
     }
@@ -108,10 +147,11 @@ class ProductController extends Controller
     {
         DB::transaction(function () use ($product) {
             foreach ($product->images as $image) {
-                Storage::disk($image->disk)->delete($image->path);
+                $this->deleteImageFromPublicHtml($image->path);
             }
 
             $product->attributes()->detach();
+            $product->images()->delete();
             $product->delete();
         });
 
@@ -137,6 +177,57 @@ class ProductController extends Controller
         return $syncData;
     }
 
+    private function syncExistingImages(Product $product, array $existingImages): void
+    {
+        $keptIds = collect($existingImages)
+            ->pluck('id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        $imagesToDelete = $product->images()
+            ->whereNotIn('id', $keptIds)
+            ->get();
+
+        foreach ($imagesToDelete as $image) {
+            $this->deleteImageFromPublicHtml($image->path);
+            $image->delete();
+        }
+
+        foreach ($existingImages as $index => $item) {
+            if (empty($item['id'])) {
+                continue;
+            }
+
+            $product->images()
+                ->where('id', (int) $item['id'])
+                ->update([
+                    'sort_order' => isset($item['sort_order']) ? (int) $item['sort_order'] : $index,
+                    'is_main' => !empty($item['is_main']),
+                ]);
+        }
+
+        if (!empty($keptIds)) {
+            $mainExists = $product->images()
+                ->whereIn('id', $keptIds)
+                ->where('is_main', true)
+                ->exists();
+
+            if (!$mainExists) {
+                $firstImage = $product->images()
+                    ->whereIn('id', $keptIds)
+                    ->orderBy('sort_order')
+                    ->first();
+
+                if ($firstImage) {
+                    $product->images()->update(['is_main' => false]);
+                    $firstImage->update(['is_main' => true]);
+                }
+            }
+        }
+    }
+
     private function storeUploadedImages(
         Product $product,
         array $uploadedImages,
@@ -147,30 +238,87 @@ class ProductController extends Controller
             return;
         }
 
-        $startOrder = $append ? ((int) $product->images()->max('sort_order') + 1) : 0;
+        $startOrder = $append
+            ? ((int) $product->images()->max('sort_order') + 1)
+            : 0;
 
         if (!$append) {
+            foreach ($product->images as $image) {
+                $this->deleteImageFromPublicHtml($image->path);
+            }
+
             $product->images()->delete();
         }
 
+        $hasMainImage = $product->images()->where('is_main', true)->exists();
+
         foreach ($uploadedImages as $index => $file) {
-            $path = $file->store('products', 'public');
+            $path = $this->saveImageToPublicHtml($file);
 
             $product->images()->create([
                 'path' => $path,
                 'disk' => 'public',
                 'sort_order' => $startOrder + $index,
-                'is_main' => $index === $mainImageIndex,
+                'is_main' => !$hasMainImage && $index === $mainImageIndex,
             ]);
         }
 
-        if ($product->images()->where('is_main', true)->count() === 0) {
-            $firstImage = $product->images()->orderBy('sort_order')->first();
+        $this->ensureMainImage($product);
+    }
 
-            if ($firstImage) {
-                $product->images()->update(['is_main' => false]);
-                $firstImage->update(['is_main' => true]);
-            }
+    private function ensureMainImage(Product $product): void
+    {
+        $images = $product->images()->orderBy('sort_order')->get();
+
+        if ($images->isEmpty()) {
+            return;
+        }
+
+        $mainImages = $images->where('is_main', true);
+
+        if ($mainImages->count() === 1) {
+            return;
+        }
+
+        $product->images()->update(['is_main' => false]);
+
+        $images->first()->update([
+            'is_main' => true,
+        ]);
+    }
+
+    private function saveImageToPublicHtml($file): string
+    {
+        $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+
+        $cleanName = Str::slug($originalName);
+        $random = Str::random(6);
+
+        $extension = strtolower($file->getClientOriginalExtension() ?: 'jpg');
+
+        $fileName = $cleanName . '-' . $random . '.' . $extension;
+
+        $destinationPath = public_path('storage/products');
+
+        if (!file_exists($destinationPath)) {
+            mkdir($destinationPath, 0755, true);
+        }
+
+        $file->move($destinationPath, $fileName);
+
+        return 'products/' . $fileName;
+    }
+
+    private function deleteImageFromPublicHtml(?string $path): void
+    {
+        if (!$path) {
+            return;
+        }
+
+        $fullPath = public_path('storage/' . ltrim($path, '/'));
+
+        if (file_exists($fullPath)) {
+            unlink($fullPath);
         }
     }
 }

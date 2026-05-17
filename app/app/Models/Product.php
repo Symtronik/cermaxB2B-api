@@ -4,8 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Product extends Model
 {
@@ -16,24 +14,65 @@ class Product extends Model
         'sku',
         'ean',
         'description',
-     
+
+        'category_id',
+        'series_id',
+
+        'pack_qty',
+        'stock_qty',
+
+        'vat_rate',
+        'net_unit',
+        'net_pack',
+        'gross_unit',
+        'gross_pack',
+
         'height',
         'diameter',
         'width',
         'length',
         'color',
         'weight',
+        'is_active',
     ];
 
-    public function attributes(): BelongsToMany
+    protected $casts = [
+        'category_id' => 'integer',
+        'series_id' => 'integer',
+        'pack_qty' => 'integer',
+        'stock_qty' => 'integer',
+        'vat_rate' => 'decimal:2',
+        'net_unit' => 'decimal:2',
+        'net_pack' => 'decimal:2',
+        'gross_unit' => 'decimal:2',
+        'gross_pack' => 'decimal:2',
+        'height' => 'decimal:2',
+        'diameter' => 'decimal:2',
+        'width' => 'decimal:2',
+        'length' => 'decimal:2',
+        'weight' => 'decimal:2',
+        'is_active' => 'boolean',
+    ];
+
+    public function attributes()
     {
         return $this->belongsToMany(Attribute::class, 'product_attributes')
             ->withPivot('value')
             ->withTimestamps();
     }
 
-    public function images(): HasMany
+    public function images()
     {
         return $this->hasMany(ProductImage::class)->orderBy('sort_order');
+    }
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    public function series()
+    {
+        return $this->belongsTo(Series::class);
     }
 }

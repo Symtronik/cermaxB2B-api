@@ -38,13 +38,14 @@ class StoreProductRequest extends FormRequest
             'color' => ['nullable', 'string', 'max:255'],
             'weight' => ['nullable', 'numeric', 'min:0'],
 
+            'is_active' => ['nullable', 'boolean'],
+
             'attributes' => ['nullable', 'array'],
             'attributes.*.attribute_id' => ['required', 'exists:attributes,id'],
             'attributes.*.value' => ['nullable'],
 
             'images' => ['nullable', 'array'],
             'images.*' => ['file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'main_image_index' => ['nullable', 'integer', 'min:0'],
 
             'main_image_index' => ['nullable', 'integer', 'min:0'],
         ];
