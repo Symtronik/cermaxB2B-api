@@ -19,6 +19,7 @@ class ProductResource extends JsonResource
 
             'category_id' => $this->category_id,
             'series_id' => $this->series_id,
+            'color_id' => $this->color_id,
 
             'pack_qty' => $this->pack_qty,
             'stock_qty' => $this->stock_qty,
@@ -33,10 +34,17 @@ class ProductResource extends JsonResource
             'diameter' => $this->diameter,
             'width' => $this->width,
             'length' => $this->length,
-            'color' => $this->color,
             'weight' => $this->weight,
 
             'is_active' => (bool) $this->is_active,
+
+            'color' => $this->whenLoaded('color', function () {
+                return $this->color ? [
+                    'id' => $this->color->id,
+                    'name' => $this->color->name,
+                    'hex' => $this->color->hex,
+                ] : null;
+            }),
 
             'category' => $this->whenLoaded('category', function () {
                 return [

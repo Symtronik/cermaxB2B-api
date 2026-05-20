@@ -35,7 +35,7 @@ class StoreProductRequest extends FormRequest
             'diameter' => ['nullable', 'numeric', 'min:0'],
             'width' => ['nullable', 'numeric', 'min:0'],
             'length' => ['nullable', 'numeric', 'min:0'],
-            'color' => ['nullable', 'string', 'max:255'],
+            'color_id' => ['nullable', 'exists:colors,id'],
             'weight' => ['nullable', 'numeric', 'min:0'],
 
             'is_active' => ['nullable', 'boolean'],

@@ -7,6 +7,7 @@ use App\Http\Requests\Customer\Company\UpsertCompanyRequest;
 use App\Models\CompanyProfile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Models\CompanyProfileChangeRequest;
 
 /**
  * @group Customer
@@ -85,4 +86,48 @@ class CompanyProfileController extends Controller
 
         return response()->json($profile);
     }
+
+    public function requestUpdate(Request $request)
+{
+    $user = $request->user();
+
+    $profile = CompanyProfile::where('user_id', $user->id)->firstOrFail();
+
+    $data = $request->validate([
+        'company_name' => ['required', 'string', 'max:255'],
+        'nip' => ['nullable', 'string', 'max:32'],
+        'regon' => ['nullable', 'string', 'max:32'],
+        'street' => ['required', 'string', 'max:255'],
+        'building_number' => ['nullable', 'string', 'max:32'],
+        'apartment_number' => ['nullable', 'string', 'max:32'],
+        'postal_code' => ['required', 'string', 'max:20'],
+        'city' => ['required', 'string', 'max:255'],
+        'country' => ['required', 'string', 'max:255'],
+        'phone' => ['nullable', 'string', 'max:64'],
+        'email' => ['nullable', 'email', 'max:255'],
+    ]);
+
+    $hasPending = CompanyProfileChangeRequest::where('user_id', $user->id)
+        ->where('status', 'pending')
+        ->exists();
+
+    if ($hasPending) {
+        return response()->json([
+            'message' => 'Masz już zgłoszenie oczekujące na akceptację.',
+        ], 422);
+    }
+
+    $requestChange = CompanyProfileChangeRequest::create([
+        'user_id' => $user->id,
+        'company_profile_id' => $profile->id,
+        'current_data' => $profile->toArray(),
+        'requested_data' => $data,
+        'status' => 'pending',
+    ]);
+
+    return response()->json([
+        'message' => 'Zgłoszenie zmiany danych firmy zostało wysłane do akceptacji.',
+        'data' => $requestChange,
+    ]);
+}
 }

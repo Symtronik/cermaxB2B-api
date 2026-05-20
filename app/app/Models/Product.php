@@ -31,7 +31,7 @@ class Product extends Model
         'diameter',
         'width',
         'length',
-        'color',
+        'color_id',
         'weight',
         'is_active',
     ];
@@ -53,6 +53,11 @@ class Product extends Model
         'weight' => 'decimal:2',
         'is_active' => 'boolean',
     ];
+
+    public function color()
+    {
+        return $this->belongsTo(Color::class);
+    }
 
     public function attributes()
     {

@@ -6,47 +6,24 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 
-class AdminStatusController extends Controller
+class AdminShowController extends Controller
 {
-    public function update(Request $request, User $user): JsonResponse
+    public function show(Request $request, User $user): JsonResponse
     {
         $actor = $request->user();
 
-        // tylko super-admin
         if (! $actor || ! $actor->hasRole('super-admin')) {
             return response()->json([
                 'message' => 'Brak uprawnień.',
             ], 403);
         }
 
-        // tylko admin/super-admin
         if (! $user->hasAnyRole(['admin', 'super-admin'])) {
             return response()->json([
                 'message' => 'Użytkownik nie jest administratorem.',
-            ], 422);
+            ], 404);
         }
-
-        // nie można zablokować siebie
-        if ((int) $actor->id === (int) $user->id) {
-            return response()->json([
-                'message' => 'Nie możesz dezaktywować własnego konta.',
-            ], 422);
-        }
-
-        $data = $request->validate([
-            'is_active' => ['required', 'boolean'],
-        ]);
-
-        $isActive = (bool) $data['is_active'];
-
-        // blocked_at = źródło prawdy
-        $user->blocked_at = $isActive
-            ? null
-            : Carbon::now();
-
-        $user->save();
 
         return response()->json([
             'data' => [

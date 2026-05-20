@@ -22,7 +22,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('sku')->nullable()->unique();
             $table->string('ean')->nullable()->unique();
-            $table->text('description')->nullable();
+            $table->longText('description')->nullable();
 
             $table->decimal('height', 10, 2)->nullable();
             $table->decimal('diameter', 10, 2)->nullable();

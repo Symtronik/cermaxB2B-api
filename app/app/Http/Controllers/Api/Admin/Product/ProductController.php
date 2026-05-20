@@ -20,6 +20,7 @@ class ProductController extends Controller
         'series',
         'attributes',
         'images',
+        'color',
     ]);
 
     $search = trim((string) $request->input('search', ''));
@@ -30,7 +31,9 @@ class ProductController extends Controller
                 ->orWhere('sku', 'like', "%{$search}%")
                 ->orWhere('ean', 'like', "%{$search}%")
                 ->orWhere('description', 'like', "%{$search}%")
-                ->orWhere('color', 'like', "%{$search}%");
+                ->orWhereHas('color', function ($colorQuery) use ($search) {
+                        $colorQuery->where('name', 'like', "%{$search}%");
+                });
         });
     }
 
@@ -85,14 +88,14 @@ class ProductController extends Controller
             return $product;
         });
 
-        $product->load(['category', 'series', 'attributes', 'images']);
+        $product->load(['category', 'series', 'attributes', 'images', 'color']);
 
         return new ProductResource($product);
     }
 
     public function show(Product $product)
     {
-        $product->load(['category', 'series', 'attributes', 'images']);
+        $product->load(['category', 'series', 'attributes', 'images', 'color']);
 
         return new ProductResource($product);
     }
@@ -138,7 +141,7 @@ class ProductController extends Controller
             $this->ensureMainImage($product);
         });
 
-        $product->load(['category', 'series', 'attributes', 'images']);
+        $product->load(['category', 'series', 'attributes', 'images', 'color']);
 
         return new ProductResource($product);
     }
